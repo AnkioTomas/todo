@@ -51,21 +51,6 @@ class TaskDao extends Dao
         return $task;
     }
 
-    /**
-     * @return TaskModel[]
-     */
-    public function listForIcs(int $userId): array
-    {
-        return $this->select()
-            ->where([
-                'user_id' => $userId,
-                'completed' => 0,
-                'due_at > 0',
-            ])
-            ->orderBy('due_at', SelectOperation::SORT_ASC)
-            ->commit();
-    }
-
     public function nextSortOrder(int $userId, int $listId): int
     {
         /** @var TaskModel[] $tasks */

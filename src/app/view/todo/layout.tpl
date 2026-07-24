@@ -50,7 +50,6 @@
             {include file="menuNav.tpl"}
             <mdui-divider class="my-2"></mdui-divider>
             <mdui-list-item rounded icon="add" id="todo-new-list-btn">新建列表</mdui-list-item>
-            <mdui-list-item rounded icon="event" id="todo-ics-btn">日历订阅</mdui-list-item>
         </mdui-list>
     </mdui-navigation-drawer>
 

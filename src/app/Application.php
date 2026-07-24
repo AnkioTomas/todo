@@ -20,7 +20,6 @@ class Application extends App
         $router = ['todo','main'];
         EventManager::trigger('admin.router', $router);
         Route::getInstance()
-            ->get('/', route('todo', 'main', 'home'))
-            ->get('/ics/{token}.ics', route('todo', 'ics', 'feed'));
+            ->get('/', route('todo', 'main', 'home'));
     }
 }

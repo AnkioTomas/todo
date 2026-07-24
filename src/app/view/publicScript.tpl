@@ -27,65 +27,16 @@ framework/layout.js,
     </form>
 </mdui-dialog-form>
 
-<mdui-dialog-form label="日历订阅" id="todo-ics-dialog" saveName="复制">
-    <form>
-        <p class="mb-3 opacity-75 body-medium">将此链接添加到 Apple / Google 日历即可订阅未完成且有截止日期的任务。</p>
-        <mdui-text-field name="url" label="订阅地址" readonly></mdui-text-field>
-        <mdui-button type="button" variant="text" id="todo-ics-reset" class="mt-2">重置链接</mdui-button>
-    </form>
-</mdui-dialog-form>
-
 <script>
     document.querySelector("#hiddenBody").remove();
 
     const listDialog = document.getElementById('todo-list-dialog');
-    const icsDialog = document.getElementById('todo-ics-dialog');
-
 
     listDialog.submit('/todo/listApi/create', (_data, res) => {
         location.href = "/todo/main/index?view=list&list_id=" + res.data.id;
     });
 
-    icsDialog.submit(null, (data) => {
-        if (!data.url) {
-            return;
-        }
-        if ($.copy(data.url)) {
-            $.toaster.success('已复制');
-        } else {
-            $.toaster.error('复制失败');
-        }
-
-        icsDialog.close();
-    });
-
     $('#todo-new-list-btn').on('click', () => {
         listDialog.open(true);
-    });
-
-    $('#todo-ics-btn').on('click', () => {
-        $.request.get('/todo/icsApi/info', {
-        }, (res) => {
-            if (res.code !== 200) {
-                $.toaster.error(res.msg || '操作失败');
-                return;
-            }
-            icsDialog.open();
-            icsDialog.setValue( res.data );
-
-        });
-    });
-
-    $('#todo-ics-reset').on('click', () => {
-        $.request.postForm('/todo/icsApi/reset', {
-
-        }, (res) => {
-            if (res.code !== 200) {
-                $.toaster.error(res.msg || '操作失败');
-                return;
-            }
-            icsDialog.setValue(res.data);
-            $.toaster.success('订阅链接已重置');
-        });
     });
 </script>

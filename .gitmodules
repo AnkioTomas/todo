@@ -1,12 +1,12 @@
 [submodule "src/nova/framework"]
-	path = src/nova/framework
-	url = https://github.com/NovaPHPOrg/nova-framework
+    path = src/nova/framework
+    url = https://github.com/NovaPHPOrg/nova-framework
 [submodule "src/app/static/framework"]
-	path = src/app/static/framework
-	url = https://github.com/NovaPHPOrgUI/framework
+    path = src/app/static/framework
+    url = https://github.com/NovaPHPOrgUI/framework
 [submodule "src/nova/plugin/workerman"]
-	path = src/nova/plugin/workerman
-	url = https://github.com/NovaPHPOrg/nova-workerman
+    path = src/nova/plugin/workerman
+    url = https://github.com/NovaPHPOrg/nova-workerman
 [submodule "src/nova/plugin/login"]
 	path = src/nova/plugin/login
 	url = https://github.com/NovaPHPOrg/nova-login
@@ -32,14 +32,20 @@
 	path = src/nova/plugin/orm
 	url = https://github.com/NovaPHPOrg/nova-orm
 [submodule "src/app/static/components/captcha"]
-	path = src/app/static/components/captcha
-	url = https://github.com/NovaPHPOrgUI/captcha
+    path = src/app/static/components/captcha
+    url = https://github.com/NovaPHPOrgUI/captcha
 [submodule "src/nova/plugin/notify"]
-	path = src/nova/plugin/notify
-	url = https://github.com/NovaPHPOrg/nova-notify
+    path = src/nova/plugin/notify
+    url = https://github.com/NovaPHPOrg/nova-notify
 [submodule "src/nova/plugin/mail"]
-	path = src/nova/plugin/mail
-	url = https://github.com/NovaPHPOrg/nova-mail
+    path = src/nova/plugin/mail
+    url = https://github.com/NovaPHPOrg/nova-mail
 [submodule "src/nova/plugin/installer"]
-	path = src/nova/plugin/installer
-	url = https://github.com/NovaPHPOrg/nova-installer
+    path = src/nova/plugin/installer
+    url = https://github.com/NovaPHPOrg/nova-installer
+[submodule "src/app/static/components/formDialog"]
+    path = src/app/static/components/formDialog
+    url = https://github.com/NovaPHPOrgUI/formDialog
+[submodule "src/nova/plugin/mcp"]
+	path = src/nova/plugin/mcp
+	url = https://github.com/NovaPHPOrg/nova-mcp

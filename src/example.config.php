@@ -12,11 +12,9 @@ return array (
   'port' => 10211,
   'framework_start' => 
   array (
-    0 => 'nova\\plugin\\login\\LoginManager',
-    1 => 'nova\\plugin\\tpl\\Handler',
-    2 => 'nova\\plugin\\notify\\NotifyPluginManager',
-    3 => 'nova\\plugin\\mail\\MailPluginManager',
-    4 => 'nova\\plugin\\installer\\InstallerManager',
+    0 => 'nova\\plugin\\installer\\InstallerManager',
+    1 => 'nova\\plugin\\login\\LoginManager',
+    2 => 'nova\\plugin\\tpl\\Handler',
   ),
   'db' => 
   array (
