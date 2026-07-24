@@ -388,7 +388,16 @@ window.pageOnLoad = function () {
         if (!state.selectedId) {
             return;
         }
-        updateTask({ id: state.selectedId, due_at: getField('todo-detail-due') || '' });
+        updateTask({ id: state.selectedId, due_at: getField('todo-detail-due') || '' }, (updated) => {
+            if (state.view === 'planned' && !updated.due_at) {
+                state.tasks = state.tasks.filter((t) => t.id !== updated.id);
+                clearDetail();
+                renderTasks();
+                return;
+            }
+            renderTasks();
+            fillDetail(updated);
+        });
     });
 
     $('#todo-detail-title').on('input', function () {
