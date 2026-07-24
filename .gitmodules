@@ -7,3 +7,39 @@
 [submodule "src/nova/plugin/workerman"]
 	path = src/nova/plugin/workerman
 	url = https://github.com/NovaPHPOrg/nova-workerman
+[submodule "src/nova/plugin/login"]
+	path = src/nova/plugin/login
+	url = https://github.com/NovaPHPOrg/nova-login
+[submodule "src/nova/plugin/tpl"]
+	path = src/nova/plugin/tpl
+	url = https://github.com/NovaPHPOrg/nova-tpl
+[submodule "src/nova/plugin/captcha"]
+	path = src/nova/plugin/captcha
+	url = https://github.com/NovaPHPOrg/nova-captcha
+[submodule "src/nova/plugin/cookie"]
+	path = src/nova/plugin/cookie
+	url = https://github.com/NovaPHPOrg/nova-cookie-session
+[submodule "src/nova/plugin/avatar"]
+	path = src/nova/plugin/avatar
+	url = https://github.com/NovaPHPOrg/nova-avatar
+[submodule "src/nova/plugin/http"]
+	path = src/nova/plugin/http
+	url = https://github.com/NovaPHPOrg/nova-http
+[submodule "src/nova/plugin/device"]
+	path = src/nova/plugin/device
+	url = https://github.com/NovaPHPOrg/nova-device
+[submodule "src/nova/plugin/orm"]
+	path = src/nova/plugin/orm
+	url = https://github.com/NovaPHPOrg/nova-orm
+[submodule "src/app/static/components/captcha"]
+	path = src/app/static/components/captcha
+	url = https://github.com/NovaPHPOrgUI/captcha
+[submodule "src/nova/plugin/notify"]
+	path = src/nova/plugin/notify
+	url = https://github.com/NovaPHPOrg/nova-notify
+[submodule "src/nova/plugin/mail"]
+	path = src/nova/plugin/mail
+	url = https://github.com/NovaPHPOrg/nova-mail
+[submodule "src/nova/plugin/installer"]
+	path = src/nova/plugin/installer
+	url = https://github.com/NovaPHPOrg/nova-installer
