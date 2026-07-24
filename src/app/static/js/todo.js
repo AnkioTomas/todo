@@ -1,9 +1,10 @@
 /**
  * Todo 工作台
+ * 列表切换对齐 book：同 pathname + query → pjax:prevented → 只刷数据，不换面板。
  * @file todo.js
  */
 
-window.pageLoadFiles = ['Toaster'];
+window.pageLoadFiles = ['Toaster', 'URLUtils'];
 
 window.pageOnLoad = function () {
     const $workspace = $('.todo-workspace');
@@ -12,8 +13,8 @@ window.pageOnLoad = function () {
     }
 
     const state = {
-        view: $workspace.data('view') || 'list',
-        listId: parseInt($workspace.data('list-id'), 10) || 0,
+        view: 'list',
+        listId: 0,
         defaultListId: parseInt($workspace.data('default-list-id'), 10) || 0,
         selectedId: 0,
         tasks: [],
@@ -81,28 +82,6 @@ window.pageOnLoad = function () {
 
     const isNarrow = () => window.matchMedia('(max-width: 900px)').matches;
 
-    const showDetailPane = (show) => {
-        if (show) {
-            $detailPane.removeAttr('hidden');
-            $detailEmpty.attr('hidden', '');
-            $detailBody.removeAttr('hidden');
-            if (isNarrow()) {
-                $detailPane.addClass('todo-detail-open');
-                $workspace.addClass('todo-detail-active');
-            }
-        } else {
-            $detailBody.attr('hidden', '');
-            $detailEmpty.removeAttr('hidden');
-            $detailPane.removeClass('todo-detail-open');
-            $workspace.removeClass('todo-detail-active');
-            if (!isNarrow()) {
-                $detailPane.removeAttr('hidden');
-            } else {
-                $detailPane.attr('hidden', '');
-            }
-        }
-    };
-
     const setField = (id, value) => {
         const el = document.getElementById(id);
         if (el) {
@@ -113,6 +92,28 @@ window.pageOnLoad = function () {
     const getField = (id) => {
         const el = document.getElementById(id);
         return el ? String(el.value || '') : '';
+    };
+
+    const showDetailPane = (show) => {
+        if (show) {
+            $detailPane.removeAttr('hidden');
+            $detailEmpty.attr('hidden', '');
+            $detailBody.removeAttr('hidden');
+            if (isNarrow()) {
+                $detailPane.addClass('todo-detail-open');
+                $workspace.addClass('todo-detail-active');
+            }
+            return;
+        }
+        $detailBody.attr('hidden', '');
+        $detailEmpty.removeAttr('hidden');
+        $detailPane.removeClass('todo-detail-open');
+        $workspace.removeClass('todo-detail-active');
+        if (!isNarrow()) {
+            $detailPane.removeAttr('hidden');
+        } else {
+            $detailPane.attr('hidden', '');
+        }
     };
 
     const clearDetail = () => {
@@ -142,6 +143,14 @@ window.pageOnLoad = function () {
         showDetailPane(true);
     };
 
+    const escapeHtml = (str) => {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    };
+
     const renderTasks = () => {
         $taskList.empty();
         if (!state.tasks.length) {
@@ -154,7 +163,7 @@ window.pageOnLoad = function () {
             const active = task.id === state.selectedId ? ' is-active' : '';
             const done = task.completed === 1 ? ' is-completed' : '';
             const starIcon = task.important === 1 ? 'star' : 'star_border';
-            const html = `
+            $taskList.append(`
                 <div class="todo-task-item${active}${done}" data-id="${task.id}">
                     <mdui-checkbox class="todo-task-check" ${task.completed === 1 ? 'checked' : ''}></mdui-checkbox>
                     <div class="todo-task-main">
@@ -162,20 +171,45 @@ window.pageOnLoad = function () {
                         ${due ? `<div class="todo-task-due">${escapeHtml(due)}</div>` : ''}
                     </div>
                     <mdui-button-icon class="todo-task-star" icon="${starIcon}"></mdui-button-icon>
-                </div>`;
-            $taskList.append(html);
+                </div>`);
         });
     };
 
-    const escapeHtml = (str) => {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+    const syncTitle = () => {
+        const $active = $('#todo-drawer-list mdui-list-item[active]').first();
+        let pageTitle = String($active.text() || '').trim();
+        if (!pageTitle) {
+            const titles = { today: '今天', important: '重要', planned: '已计划' };
+            pageTitle = titles[state.view] || '任务';
+        }
+        $('.todo-pane-title').text(pageTitle);
+        $('mdui-top-app-bar-title').text(pageTitle);
+        const appName = 'Todo';
+        document.title = `${pageTitle} - ${appName}`;
+        const titleEl = document.getElementById('title');
+        if (titleEl) {
+            titleEl.textContent = `${pageTitle} - ${appName}`;
+        }
     };
 
-    const loadTasks = (keepSelected) => {
+    const applyParams = () => {
+        const params = $.url.getAllParams();
+        let view = params.view || 'list';
+        if (!['today', 'important', 'planned', 'list'].includes(view)) {
+            view = 'list';
+        }
+        let listId = parseInt(params.list_id || '0', 10) || 0;
+        if (view === 'list' && listId <= 0) {
+            listId = state.defaultListId;
+        }
+        state.view = view;
+        state.listId = listId;
+        $workspace.attr('data-view', state.view);
+        $workspace.attr('data-list-id', String(state.listId || 0));
+        syncTitle();
+    };
+
+    const loadTasks = () => {
         const data = { view: state.view };
         if (state.view === 'list') {
             data.list_id = state.listId;
@@ -186,19 +220,15 @@ window.pageOnLoad = function () {
                 return;
             }
             state.tasks = res.data || [];
-            if (keepSelected && state.selectedId) {
-                const still = state.tasks.find((t) => t.id === state.selectedId);
-                renderTasks();
-                if (still) {
-                    fillDetail(still);
-                } else {
-                    clearDetail();
-                }
-            } else {
-                clearDetail();
-                renderTasks();
-            }
+            clearDetail();
+            renderTasks();
         });
+    };
+
+    /** 对齐 book.js：同 path query 切换只刷数据 */
+    const reload = () => {
+        applyParams();
+        loadTasks();
     };
 
     const updateTask = (payload, cb) => {
@@ -214,11 +244,11 @@ window.pageOnLoad = function () {
             }
             if (typeof cb === 'function') {
                 cb(updated);
-            } else {
-                renderTasks();
-                if (state.selectedId === updated.id) {
-                    fillDetail(updated);
-                }
+                return;
+            }
+            renderTasks();
+            if (state.selectedId === updated.id) {
+                fillDetail(updated);
             }
         });
     };
@@ -235,11 +265,10 @@ window.pageOnLoad = function () {
         if (!title) {
             return;
         }
-        const payload = {
+        req().postForm('/todo/taskApi/create', {
             list_id: targetListId(),
             title: title,
-        };
-        req().postForm('/todo/taskApi/create', payload, (res) => {
+        }, (res) => {
             if (res.code !== 200) {
                 toastError(res.msg);
                 return;
@@ -247,14 +276,14 @@ window.pageOnLoad = function () {
             setField('todo-add-input', '');
             const task = res.data;
             if (state.view === 'today') {
-                updateTask({ id: task.id, my_day: 1 }, () => loadTasks(false));
+                updateTask({ id: task.id, my_day: 1 }, () => loadTasks());
                 return;
             }
             if (state.view === 'important') {
-                updateTask({ id: task.id, important: 1 }, () => loadTasks(false));
+                updateTask({ id: task.id, important: 1 }, () => loadTasks());
                 return;
             }
-            loadTasks(false);
+            loadTasks();
         });
     };
 
@@ -282,10 +311,8 @@ window.pageOnLoad = function () {
 
     $taskList.on('change', '.todo-task-check', function (e) {
         e.stopPropagation();
-        const $item = $(this).closest('.todo-task-item');
-        const id = parseInt($item.data('id'), 10);
-        const checked = this.checked ? 1 : 0;
-        updateTask({ id: id, completed: checked }, (updated) => {
+        const id = parseInt($(this).closest('.todo-task-item').data('id'), 10);
+        updateTask({ id: id, completed: this.checked ? 1 : 0 }, (updated) => {
             if (state.view !== 'list' && updated.completed === 1) {
                 state.tasks = state.tasks.filter((t) => t.id !== updated.id);
                 if (state.selectedId === updated.id) {
@@ -303,14 +330,12 @@ window.pageOnLoad = function () {
 
     $taskList.on('click', '.todo-task-star', function (e) {
         e.stopPropagation();
-        const $item = $(this).closest('.todo-task-item');
-        const id = parseInt($item.data('id'), 10);
+        const id = parseInt($(this).closest('.todo-task-item').data('id'), 10);
         const task = state.tasks.find((t) => t.id === id);
         if (!task) {
             return;
         }
-        const next = task.important === 1 ? 0 : 1;
-        updateTask({ id: id, important: next }, (updated) => {
+        updateTask({ id: id, important: task.important === 1 ? 0 : 1 }, (updated) => {
             if (state.view === 'important' && updated.important === 0) {
                 state.tasks = state.tasks.filter((t) => t.id !== updated.id);
                 if (state.selectedId === updated.id) {
@@ -425,7 +450,7 @@ window.pageOnLoad = function () {
         }, 500);
     });
 
-    // 新建列表 / ICS：抽屉按钮在 layout 中，只绑一次
+    // 新建列表 / ICS：drawer 在 layout 壳里，只绑一次
     if (!window.__todoDrawerBound) {
         window.__todoDrawerBound = true;
 
@@ -442,7 +467,7 @@ window.pageOnLoad = function () {
             if (!dialog) {
                 return;
             }
-            req().get('/todo/icsApi/info', {}, (res) => {
+            $.request.get('/todo/icsApi/info', {}, (res) => {
                 if (res.code !== 200) {
                     toastError(res.msg);
                     return;
@@ -463,12 +488,13 @@ window.pageOnLoad = function () {
     const appendDrawerList = (list) => {
         const $list = $('#todo-drawer-list');
         const $divider = $list.find('mdui-divider').first();
+        const url = `/todo/main/index?view=list&list_id=${list.id}`;
         const item = document.createElement('mdui-list-item');
         item.setAttribute('rounded', '');
         item.setAttribute('icon', 'list');
-        item.setAttribute('data-link', `/todo/main/index?view=list&list_id=${list.id}`);
+        item.setAttribute('data-link', url);
         item.setAttribute('data-pjax', 'true');
-        item.setAttribute('data-match', `list_id=${list.id}`);
+        item.setAttribute('data-match', `^/todo/main/index\\?([^#]*&)?view=list&list_id=${list.id}(&|$)`);
         item.setAttribute('data-list-id', String(list.id));
         item.setAttribute('data-is-default', '0');
         item.classList.add('todo-list-item');
@@ -497,12 +523,8 @@ window.pageOnLoad = function () {
             if (dialog) {
                 dialog.open = false;
             }
-            const item = appendDrawerList(list);
-            if (item) {
-                item.click();
-            } else {
-                location.href = `/todo/main/index?view=list&list_id=${list.id}`;
-            }
+            // 走 SidebarManager → loadUri 同 path → pjax:prevented
+            appendDrawerList(list).click();
         });
     });
 
@@ -538,7 +560,6 @@ window.pageOnLoad = function () {
         });
     });
 
-    // 窄屏默认隐藏详情
     if (isNarrow()) {
         $detailPane.attr('hidden', '');
     } else {
@@ -546,7 +567,10 @@ window.pageOnLoad = function () {
         showDetailPane(false);
     }
 
-    loadTasks(false);
+    // 对齐 book.js
+    $.emitter.on('pjax:prevented', reload);
+    reload();
+
     return false;
 };
 

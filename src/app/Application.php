@@ -17,7 +17,7 @@ class Application extends App
     public function onFrameworkStart(): void
     {
         Route::getInstance()
-            ->get('/', route('todo', 'main', 'index'))
+            ->get('/', route('todo', 'main', 'home'))
             ->get('/ics/{token}.ics', route('todo', 'ics', 'feed'));
     }
 }
