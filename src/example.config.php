@@ -1,6 +1,7 @@
 <?php
 return array (
-  'debug' => true,
+  'debug' => false,
+  'installed' => false,
   'timezone' => 'Asia/Shanghai',
   'default_route' => true,
   'domain' => 
@@ -18,12 +19,25 @@ return array (
   ),
   'db' => 
   array (
-    'type' => 'mysql',
-    'host' => '',
+    'type' => 'sqlite',
+    'host' => '127.0.0.1',
     'port' => 3306,
     'username' => '',
     'password' => '',
-    'db' => '',
+    'db' => 'todo',
     'charset' => 'utf8mb4',
+  ),
+  'session' => 
+  array (
+    'time' => 0,
+    'session_name' => 'NovaSession',
+  ),
+  'login' => 
+  array (
+    'allowedLoginCount' => 1,
+    'loginCallback' => '/',
+    'logoutRedirect' => '/',
+    'systemName' => 'Todo',
+    'ssoEnable' => false,
   ),
 );
