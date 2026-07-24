@@ -14,8 +14,8 @@ class TaskApi extends BaseAPIController
 {
     public function index(): Response
     {
-        $view = (string)$this->request->get('view', 'list');
-        $listId = (int)$this->request->get('list_id', 0);
+        $view = $this->request->get('view', 'list');
+        $listId = $this->request->get('list_id', 0);
         $userId = $this->userModel->id;
 
         if (!in_array($view, ['today', 'important', 'planned', 'list'], true)) {
@@ -80,10 +80,10 @@ class TaskApi extends BaseAPIController
         $task->list_id = $listId;
         $task->title = $title;
         $task->note = '';
-        $task->important = 0;
+        $task->important = ((int)$this->request->post('important', 0)) === 1 ? 1 : 0;
         $task->completed = 0;
         $task->due_at = 0;
-        $task->my_day_date = 0;
+        $task->my_day_date = ((int)$this->request->post('my_day', 0)) === 1 ? (int)date('Ymd') : 0;
         $task->sort_order = TaskDao::getInstance()->nextSortOrder($userId, $listId);
         $task->completed_at = 0;
         $task->created_at = $now;
