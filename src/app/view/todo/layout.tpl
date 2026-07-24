@@ -38,6 +38,7 @@
                         </div>
                     </mdui-menu-item>
                     <mdui-divider></mdui-divider>
+
                     <mdui-menu-item icon="lock" data-pjax-item data-href="/login/pwd">修改密码</mdui-menu-item>
                     <mdui-menu-item icon="logout" href="/login/logout">退出登录</mdui-menu-item>
                 </mdui-menu>
@@ -50,6 +51,7 @@
             {include file="menuNav.tpl"}
             <mdui-divider class="my-2"></mdui-divider>
             <mdui-list-item rounded icon="add" id="todo-new-list-btn">新建列表</mdui-list-item>
+            <mdui-list-item rounded icon="hub" id="todo-copy-mcp-btn">复制 MCP 配置</mdui-list-item>
         </mdui-list>
     </mdui-navigation-drawer>
 
