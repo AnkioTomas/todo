@@ -43,3 +43,6 @@
 [submodule "src/nova/plugin/mcp"]
     path = src/nova/plugin/mcp
     url = https://github.com/NovaPHPOrg/nova-mcp
+[submodule "src/app/static/components/dataTable"]
+	path = src/app/static/components/dataTable
+	url = https://github.com/NovaPHPOrgUI/dataTable
