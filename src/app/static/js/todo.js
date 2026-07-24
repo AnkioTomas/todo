@@ -1,339 +1,145 @@
 /**
- * Todo 工作台
- * 列表切换对齐 book：同 pathname + query → pjax:prevented → 只刷数据，不换面板。
+ * Todo 工作台：同 path + query 切换走 pjax:prevented，只刷数据。
  * @file todo.js
  */
-
-window.pageLoadFiles = ['Toaster', 'URLUtils', 'Layer'];
+window.pageLoadFiles = ['Toaster', 'URLUtils', 'Layer', 'Form'];
 
 window.pageOnLoad = function () {
-    const $workspace = $('.todo-workspace');
-    if ($workspace.length === 0) {
-        return false;
-    }
-
-    const state = {
-        view: 'list',
-        listId: 0,
-        defaultListId: parseInt($workspace.data('default-list-id'), 10) || 0,
-        selectedId: 0,
-        tasks: [],
-        noteTimer: null,
-        titleTimer: null,
-    };
-
-    const $taskList = $('#todo-task-list');
+    const $list = $('#todo-task-list');
     const $empty = $('#todo-task-empty');
-    const $detailPane = $('#todo-detail-pane');
+    const $detail = $('#todo-detail-pane');
+    const defaultListId = parseInt(
+        $('#todo-drawer-list .todo-list-item[data-is-default="1"]').attr('data-list-id'),
+        10,
+    ) || 0;
 
-    const req = () => $.request;
+    const state = { view: 'list', listId: 0, selectedId: 0, tasks: [] };
 
-    const toastError = (msg) => {
-        if (window.$ && $.toaster) {
-            $.toaster.error(msg || '操作失败');
-        }
-    };
+    const ymd = (ts) => (ts ? $.formatDateTime(new Date(ts * 1000)).slice(0, 10) : '');
+    const todayInt = () => parseInt($.formatDateTime(new Date()).slice(0, 10).replace(/-/g, ''), 10);
 
-    const toastOk = (msg) => {
-        if (window.$ && $.toaster) {
-            $.toaster.success(msg || '已保存');
-        }
-    };
+    const $form = $('#item');
 
-    const todayYmd = () => {
-        const d = new Date();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return parseInt(`${d.getFullYear()}${m}${day}`, 10);
-    };
-
-    const formatDue = (dueAt) => {
-        if (!dueAt) {
-            return '';
-        }
-        const d = new Date(dueAt * 1000);
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-    };
-
-    const dueLabel = (dueAt) => {
-        if (!dueAt) {
-            return '';
-        }
-        const dateStr = formatDue(dueAt);
-        const today = formatDue(Math.floor(Date.now() / 1000));
-        if (dateStr === today) {
-            return '今天到期';
-        }
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tY = tomorrow.getFullYear();
-        const tM = String(tomorrow.getMonth() + 1).padStart(2, '0');
-        const tD = String(tomorrow.getDate()).padStart(2, '0');
-        if (dateStr === `${tY}-${tM}-${tD}`) {
-            return '明天到期';
-        }
-        return `截止 ${dateStr}`;
-    };
-
-    const setField = (id, value) => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.value = value == null ? '' : String(value);
-        }
-    };
-
-    const getField = (id) => {
-        const el = document.getElementById(id);
-        return el ? String(el.value || '') : '';
-    };
-
-    const showDetailPane = (show) => {
-        if (show) {
-            $detailPane.removeAttr('hidden');
-            $workspace.addClass('is-detail-open');
-            return;
-        }
-        $detailPane.attr('hidden', '');
-        $workspace.removeClass('is-detail-open');
-    };
-
-    const clearDetail = () => {
-        state.selectedId = 0;
-        $taskList.find('.todo-task-item').removeClass('is-active');
-        showDetailPane(false);
-    };
-
-    const fillDetail = (task) => {
+    const setDetail = (task) => {
+        state.selectedId = task ? task.id : 0;
+        $list.find('.todo-task-item').removeClass('is-active');
         if (!task) {
-            clearDetail();
+            $detail.attr('hidden', '');
             return;
         }
-        state.selectedId = task.id;
-        setField('todo-detail-title', task.title || '');
-        setField('todo-detail-note', task.note || '');
-        setField('todo-detail-due', formatDue(task.due_at));
-        const doneEl = document.getElementById('todo-detail-done');
-        if (doneEl) {
-            doneEl.checked = task.completed === 1;
-        }
-        const mydayEl = document.getElementById('todo-detail-myday');
-        if (mydayEl) {
-            mydayEl.checked = task.my_day_date === todayYmd();
-        }
+        $(`.todo-task-item[data-id="${task.id}"]`).addClass('is-active');
+        $.form.val($form, {
+            id: task.id,
+            title: task.title || '',
+            note: task.note || '',
+            due_at: ymd(task.due_at),
+            completed: task.completed,
+            my_day: task.my_day_date === todayInt() ? 1 : 0,
+        });
         $('#todo-detail-star').attr('icon', task.important === 1 ? 'star' : 'star_border');
-        showDetailPane(true);
+        $detail.removeAttr('hidden');
     };
 
-    const escapeHtml = (str) => {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    };
-
-    const renderTasks = () => {
-        $taskList.empty();
+    const render = () => {
+        $list.empty();
         if (!state.tasks.length) {
-            $empty.removeAttr('hidden');
-            return;
+            $empty.text('暂无任务').show();
+        } else {
+            $empty.hide();
         }
-        $empty.attr('hidden', '');
-        state.tasks.forEach((task) => {
-            const due = dueLabel(task.due_at);
-            const active = task.id === state.selectedId ? ' is-active' : '';
-            const done = task.completed === 1 ? ' is-completed' : '';
-            const starIcon = task.important === 1 ? 'star' : 'star_border';
-            $taskList.append(`
-                <div class="todo-task-item${active}${done}" data-id="${task.id}">
-                    <mdui-checkbox class="todo-task-check" ${task.completed === 1 ? 'checked' : ''}></mdui-checkbox>
-                    <div class="todo-task-main min-w-0">
-                        <div class="todo-task-title body-large break-words">${escapeHtml(task.title)}</div>
-                        ${due ? `<div class="todo-task-due text-primary label-small mt-1">${escapeHtml(due)}</div>` : ''}
+        state.tasks.forEach((t) => {
+            const due = ymd(t.due_at) || '无期限';
+            $list.append(`
+                <div class="todo-task-item d-flex items-start gap-2${t.id === state.selectedId ? ' is-active' : ''}${t.completed === 1 ? ' is-completed' : ''}" data-id="${t.id}">
+                    <mdui-checkbox class="todo-task-check flex-none" ${t.completed === 1 ? 'checked' : ''}></mdui-checkbox>
+                    <div class="todo-task-main flex-1 min-w-0">
+                        <div class="todo-task-title body-large break-words">${$.escapeHtml(t.title || '')}</div>
+                        <div class="todo-task-due text-primary label-small mt-1">${due}</div>
                     </div>
-                    <mdui-button-icon class="todo-task-star" icon="${starIcon}"></mdui-button-icon>
+                    <mdui-button-icon class="todo-task-star flex-none" icon="${t.important === 1 ? 'star' : 'star_border'}"></mdui-button-icon>
                 </div>`);
         });
     };
 
-    const syncTitle = () => {
-        const $active = $('#todo-drawer-list mdui-list-item[active]').first();
-        let pageTitle = String($active.text() || '').trim();
-        if (!pageTitle) {
-            const titles = { today: '今天', important: '重要', planned: '已计划' };
-            pageTitle = titles[state.view] || '任务';
+    const reload = (keepId = 0) => {
+        const p = $.url.getAllParams();
+        state.view = ['today', 'important', 'planned', 'list'].includes(p.view) ? p.view : 'list';
+        state.listId = parseInt(p.list_id || '0', 10) || 0;
+        if (state.view === 'list' && state.listId <= 0) {
+            state.listId = defaultListId;
         }
-        $('.todo-pane-title').text(pageTitle);
-        $('mdui-top-app-bar-title').text(pageTitle);
-        const appName = 'Todo';
-        document.title = `${pageTitle} - ${appName}`;
-        const titleEl = document.getElementById('title');
-        if (titleEl) {
-            titleEl.textContent = `${pageTitle} - ${appName}`;
-        }
-        syncListDeleteBtn();
-    };
 
-    const isDeletableList = () => {
-        if (state.view !== 'list' || state.listId <= 0) {
-            return false;
+        const link = location.pathname + location.search;
+        let title = String($(`#todo-drawer-list mdui-list-item[data-link="${link}"]`).first().text() || '').trim();
+        if (title) {
+            $('.todo-pane-title').text(title);
         }
-        if (state.listId === state.defaultListId) {
-            return false;
-        }
-        const $item = $(`#todo-drawer-list .todo-list-item[data-list-id="${state.listId}"]`);
-        if ($item.length && String($item.attr('data-is-default')) === '1') {
-            return false;
-        }
-        return true;
-    };
+        const canDel = state.view === 'list'
 
-    const syncListDeleteBtn = () => {
-        const btn = document.getElementById('todo-list-delete-btn');
-        if (!btn) {
-            return;
-        }
-        if (isDeletableList()) {
-            btn.removeAttribute('hidden');
+        const $del = $('#todo-list-delete-btn');
+        if (canDel) {
+            $del.removeAttr('hidden');
         } else {
-            btn.setAttribute('hidden', '');
+            $del.attr('hidden', '');
         }
-    };
 
-    const confirm = (msg, title, onYes) => {
-        $.layer.confirm({ msg: msg, title: title, yes: onYes, no: function () {} });
-    };
-
-    const goDefaultList = () => {
-        const $default = $(`#todo-drawer-list .todo-list-item[data-list-id="${state.defaultListId}"]`);
-        if ($default.length) {
-            $default[0].click();
-            return;
-        }
-        const url = `/todo/main/index?view=list&list_id=${state.defaultListId}`;
-        $.url.setUri(url);
-        $.emitter.emit('pjax:prevented', new URL(url, window.location.origin).searchParams);
-        // SidebarManager 高亮需要自己点不到时手动清一下 active
-        $('#todo-drawer-list mdui-list-item[active]').removeAttr('active');
-        $(`#todo-drawer-list mdui-list-item[data-link="${url}"]`).attr('active', '');
-    };
-
-    const deleteCurrentList = () => {
-        if (!isDeletableList()) {
-            return;
-        }
-        const listId = state.listId;
-        const title = String($('.todo-pane-title').text() || '').trim() || '该列表';
-        confirm(
-            `确定删除列表「${escapeHtml(title)}」吗？其中的任务也会一并删除。`,
-            '删除列表',
-            function () {
-                req().postForm('/todo/listApi/delete', { id: listId }, (res) => {
-                    if (res.code !== 200) {
-                        toastError(res.msg);
-                        return;
-                    }
-                    $(`#todo-drawer-list .todo-list-item[data-list-id="${listId}"]`).remove();
-                    toastOk('列表已删除');
-                    goDefaultList();
-                });
-            }
-        );
-    };
-
-    const applyParams = () => {
-        const params = $.url.getAllParams();
-        let view = params.view || 'list';
-        if (!['today', 'important', 'planned', 'list'].includes(view)) {
-            view = 'list';
-        }
-        let listId = parseInt(params.list_id || '0', 10) || 0;
-        if (view === 'list' && listId <= 0) {
-            listId = state.defaultListId;
-        }
-        state.view = view;
-        state.listId = listId;
-        syncTitle();
-    };
-
-    const loadTasks = () => {
         const data = { view: state.view };
         if (state.view === 'list') {
             data.list_id = state.listId;
         }
-        req().get('/todo/taskApi/index', data, (res) => {
+        $.request.get('/todo/taskApi/index', data, (res) => {
             if (res.code !== 200) {
-                toastError(res.msg);
+                $.toaster.error(res.msg);
                 return;
             }
-            state.tasks = res.data || [];
-            clearDetail();
-            renderTasks();
+            state.tasks = res.data;
+            render();
+            const task = keepId ? state.tasks.find((t) => t.id === keepId) : null;
+            setDetail(task || null);
         });
     };
 
-    /** 对齐 book.js：同 path query 切换只刷数据 */
-    const reload = () => {
-        applyParams();
-        loadTasks();
-    };
-
-    const updateTask = (payload, cb) => {
-        req().postForm('/todo/taskApi/update', payload, (res) => {
+    const save = (payload, soft = false) => {
+        $.request.postForm('/todo/taskApi/update', payload, (res) => {
             if (res.code !== 200) {
-                toastError(res.msg);
+                $.toaster.error(res.msg || '操作失败');
                 return;
             }
-            const updated = res.data;
-            const idx = state.tasks.findIndex((t) => t.id === updated.id);
-            if (idx >= 0) {
-                state.tasks[idx] = updated;
-            }
-            if (typeof cb === 'function') {
-                cb(updated);
+            if (soft) {
+                const u = res.data;
+                const i = state.tasks.findIndex((t) => t.id === u.id);
+                if (i >= 0) {
+                    state.tasks[i] = u;
+                }
+                render();
                 return;
             }
-            renderTasks();
-            if (state.selectedId === updated.id) {
-                fillDetail(updated);
-            }
+            reload(state.selectedId);
         });
-    };
-
-    const targetListId = () => {
-        if (state.view === 'list' && state.listId > 0) {
-            return state.listId;
-        }
-        return state.defaultListId;
     };
 
     const addTask = () => {
-        const title = getField('todo-add-input').trim();
+        const title = String($('#todo-add-input').val() || '').trim();
         if (!title) {
             return;
         }
-        req().postForm('/todo/taskApi/create', {
-            list_id: targetListId(),
-            title: title,
-        }, (res) => {
+        const data = {
+            list_id: state.view === 'list' && state.listId > 0 ? state.listId : defaultListId,
+            title,
+        };
+        if (state.view === 'today') {
+            data.my_day = 1;
+        }
+        if (state.view === 'important') {
+            data.important = 1;
+        }
+        $.request.postForm('/todo/taskApi/create', data, (res) => {
             if (res.code !== 200) {
-                toastError(res.msg);
+                $.toaster.error(res.msg || '操作失败');
                 return;
             }
-            setField('todo-add-input', '');
-            const task = res.data;
-            if (state.view === 'today') {
-                updateTask({ id: task.id, my_day: 1 }, () => loadTasks());
-                return;
-            }
-            if (state.view === 'important') {
-                updateTask({ id: task.id, important: 1 }, () => loadTasks());
-                return;
-            }
-            loadTasks();
+            $('#todo-add-input').val('');
+            reload();
         });
     };
 
@@ -345,277 +151,119 @@ window.pageOnLoad = function () {
         }
     });
 
-    $taskList.on('click', '.todo-task-item', function (e) {
+    $list.on('click', '.todo-task-item', function (e) {
         if ($(e.target).closest('.todo-task-check, .todo-task-star').length) {
             return;
         }
-        const id = parseInt($(this).data('id'), 10);
-        const task = state.tasks.find((t) => t.id === id);
-        if (!task) {
-            return;
+        const task = state.tasks.find((t) => t.id === parseInt($(this).data('id'), 10));
+        if (task) {
+            setDetail(task);
         }
-        $taskList.find('.todo-task-item').removeClass('is-active');
-        $(this).addClass('is-active');
-        fillDetail(task);
     });
 
-    $taskList.on('change', '.todo-task-check', function (e) {
+    $list.on('change', '.todo-task-check', function (e) {
         e.stopPropagation();
-        const id = parseInt($(this).closest('.todo-task-item').data('id'), 10);
-        updateTask({ id: id, completed: this.checked ? 1 : 0 }, (updated) => {
-            if (state.view !== 'list' && updated.completed === 1) {
-                state.tasks = state.tasks.filter((t) => t.id !== updated.id);
-                if (state.selectedId === updated.id) {
-                    clearDetail();
-                }
-                renderTasks();
-                return;
-            }
-            renderTasks();
-            if (state.selectedId === updated.id) {
-                fillDetail(updated);
-            }
+        save({
+            id: parseInt($(this).closest('.todo-task-item').data('id'), 10),
+            completed: $(this).prop('checked') ? 1 : 0,
         });
     });
 
-    $taskList.on('click', '.todo-task-star', function (e) {
+    $list.on('click', '.todo-task-star', function (e) {
         e.stopPropagation();
         const id = parseInt($(this).closest('.todo-task-item').data('id'), 10);
         const task = state.tasks.find((t) => t.id === id);
-        if (!task) {
-            return;
+        if (task) {
+            save({ id, important: task.important === 1 ? 0 : 1 });
         }
-        updateTask({ id: id, important: task.important === 1 ? 0 : 1 }, (updated) => {
-            if (state.view === 'important' && updated.important === 0) {
-                state.tasks = state.tasks.filter((t) => t.id !== updated.id);
-                if (state.selectedId === updated.id) {
-                    clearDetail();
-                }
-                renderTasks();
-                return;
-            }
-            renderTasks();
-            if (state.selectedId === updated.id) {
-                fillDetail(updated);
-            }
-        });
     });
 
-    $('#todo-detail-back').on('click', () => {
-        clearDetail();
-    });
+    $('#todo-detail-back').on('click', () => setDetail(null));
 
     $('#todo-detail-star').on('click', () => {
-        if (!state.selectedId) {
-            return;
-        }
         const task = state.tasks.find((t) => t.id === state.selectedId);
-        if (!task) {
-            return;
+        if (task) {
+            save({ id: task.id, important: task.important === 1 ? 0 : 1 });
         }
-        updateTask({ id: task.id, important: task.important === 1 ? 0 : 1 });
     });
 
     $('#todo-detail-delete').on('click', () => {
         if (!state.selectedId) {
             return;
         }
-        const id = state.selectedId;
-        req().postForm('/todo/taskApi/delete', { id: id }, (res) => {
+        $.request.postForm('/todo/taskApi/delete', { id: state.selectedId }, (res) => {
             if (res.code !== 200) {
-                toastError(res.msg);
+                $.toaster.error(res.msg || '操作失败');
                 return;
             }
-            state.tasks = state.tasks.filter((t) => t.id !== id);
-            clearDetail();
-            renderTasks();
-            toastOk('已删除');
+            $.toaster.success('已删除');
+            reload();
         });
     });
 
-    $('#todo-detail-done').on('change', function () {
-        if (!state.selectedId) {
+    $('#todo-list-delete-btn').on('click', function () {
+        if ($(this).is('[hidden]')) {
             return;
         }
-        updateTask({ id: state.selectedId, completed: this.checked ? 1 : 0 });
-    });
-
-    $('#todo-detail-myday').on('change', function () {
-        if (!state.selectedId) {
-            return;
-        }
-        updateTask({ id: state.selectedId, my_day: this.checked ? 1 : 0 }, (updated) => {
-            if (state.view === 'today' && updated.my_day_date !== todayYmd()) {
-                state.tasks = state.tasks.filter((t) => t.id !== updated.id);
-                clearDetail();
-                renderTasks();
-                return;
-            }
-            renderTasks();
-            fillDetail(updated);
+        const listId = state.listId;
+        const name = String($('.todo-pane-title').text() || '').trim() || '该列表';
+        $.layer.confirm({
+            msg: `确定删除列表「${$.escapeHtml(name)}」吗？其中的任务也会一并删除。`,
+            title: '删除列表',
+            yes: () => {
+                $.request.postForm('/todo/listApi/delete', { id: listId }, (res) => {
+                    if (res.code !== 200) {
+                        $.toaster.error(res.msg || '操作失败');
+                        return;
+                    }
+                    $(`#todo-drawer-list .todo-list-item[data-list-id="${listId}"]`).remove();
+                    $.toaster.success('列表已删除');
+                    const url = `/todo/main/index?view=today`;
+                    $.url.setUri(url);
+                    $.emitter.emit('pjax:prevented', new URL(url, location.origin).searchParams);
+                });
+            },
         });
     });
 
-    $('#todo-detail-due').on('change', function () {
-        if (!state.selectedId) {
-            return;
-        }
-        updateTask({ id: state.selectedId, due_at: getField('todo-detail-due') || '' }, (updated) => {
-            if (state.view === 'planned' && !updated.due_at) {
-                state.tasks = state.tasks.filter((t) => t.id !== updated.id);
-                clearDetail();
-                renderTasks();
-                return;
-            }
-            renderTasks();
-            fillDetail(updated);
-        });
-    });
-
-    $('#todo-detail-title').on('input', function () {
-        if (!state.selectedId) {
-            return;
-        }
-        const value = getField('todo-detail-title');
-        clearTimeout(state.titleTimer);
-        state.titleTimer = setTimeout(() => {
-            if (!value.trim()) {
-                return;
-            }
-            updateTask({ id: state.selectedId, title: value.trim() });
-        }, 400);
-    });
-
-    $('#todo-detail-note').on('input', function () {
-        if (!state.selectedId) {
-            return;
-        }
-        const value = getField('todo-detail-note');
-        clearTimeout(state.noteTimer);
-        state.noteTimer = setTimeout(() => {
-            updateTask({ id: state.selectedId, note: value });
-        }, 500);
-    });
-
-    // 新建列表 / ICS：drawer 在 layout 壳里，只绑一次
-    if (!window.__todoDrawerBound) {
-        window.__todoDrawerBound = true;
-
-        $(document).on('click', '#todo-new-list-btn', () => {
-            const dialog = document.getElementById('todo-list-dialog');
-            if (dialog) {
-                setField('todo-list-title-input', '');
-                dialog.open = true;
-            }
-        });
-
-        $(document).on('click', '#todo-ics-btn', () => {
-            const dialog = document.getElementById('todo-ics-dialog');
-            if (!dialog) {
-                return;
-            }
-            $.request.get('/todo/icsApi/info', {}, (res) => {
-                if (res.code !== 200) {
-                    toastError(res.msg);
-                    return;
-                }
-                setField('todo-ics-url', res.data.url || '');
-                dialog.open = true;
-            });
-        });
-    }
-
-    $('#todo-list-dialog-cancel').on('click', () => {
-        const dialog = document.getElementById('todo-list-dialog');
-        if (dialog) {
-            dialog.open = false;
-        }
-    });
-
-    $('#todo-list-delete-btn').on('click', deleteCurrentList);
-    const appendDrawerList = (list) => {
-        const $list = $('#todo-drawer-list');
-        const $divider = $list.find('mdui-divider').first();
-        const url = `/todo/main/index?view=list&list_id=${list.id}`;
-        const item = document.createElement('mdui-list-item');
-        item.setAttribute('rounded', '');
-        item.setAttribute('icon', 'list');
-        item.setAttribute('data-link', url);
-        item.setAttribute('data-pjax', 'true');
-        item.setAttribute('data-match', `^/todo/main/index\\?([^#]*&)?view=list&list_id=${list.id}(&|$)`);
-        item.setAttribute('data-list-id', String(list.id));
-        item.setAttribute('data-is-default', '0');
-        item.classList.add('todo-list-item');
-        item.textContent = list.title;
-        if ($divider.length) {
-            $divider[0].before(item);
-        } else {
-            $list[0].appendChild(item);
-        }
-        return item;
-    };
-
-    $('#todo-list-dialog-ok').on('click', () => {
-        const title = getField('todo-list-title-input').trim();
-        if (!title) {
-            toastError('请输入列表名称');
-            return;
-        }
-        req().postForm('/todo/listApi/create', { title: title }, (res) => {
-            if (res.code !== 200) {
-                toastError(res.msg);
-                return;
-            }
-            const list = res.data;
-            const dialog = document.getElementById('todo-list-dialog');
-            if (dialog) {
-                dialog.open = false;
-            }
-            // 走 SidebarManager → loadUri 同 path → pjax:prevented
-            appendDrawerList(list).click();
-        });
-    });
-
-    $('#todo-ics-close').on('click', () => {
-        const dialog = document.getElementById('todo-ics-dialog');
-        if (dialog) {
-            dialog.open = false;
-        }
-    });
-
-    $('#todo-ics-copy').on('click', async () => {
-        const url = getField('todo-ics-url');
-        if (!url) {
-            return;
-        }
-        try {
-            await navigator.clipboard.writeText(url);
-            toastOk('已复制');
-        } catch (e) {
-            document.getElementById('todo-ics-url')?.select?.();
-            toastOk('请手动复制');
-        }
-    });
-
-    $('#todo-ics-reset').on('click', () => {
-        req().postForm('/todo/icsApi/reset', {}, (res) => {
-            if (res.code !== 200) {
-                toastError(res.msg);
-                return;
-            }
-            setField('todo-ics-url', res.data.url || '');
-            toastOk('订阅链接已重置');
-        });
-    });
-
-    showDetailPane(false);
-
-    // 对齐 book.js
-    $.emitter.on('pjax:prevented', reload);
+    // 先拉列表，再绑详情表单：表单初始化失败不能挡住任务渲染
+    $.emitter.on('pjax:prevented', () => reload());
     reload();
+
+    $.form.onChange($form, 400, (data) => {
+        const id = parseInt(data.id, 10) || 0;
+        if (!id || id !== state.selectedId) {
+            return;
+        }
+        const title = String(data.title || '').trim();
+        if (!title) {
+            return;
+        }
+        const payload = {
+            id,
+            title,
+            note: data.note || '',
+            due_at: data.due_at || '',
+            completed: data.completed ? 1 : 0,
+            my_day: data.my_day ? 1 : 0,
+        };
+        const task = state.tasks.find((t) => t.id === id);
+        if (task
+            && task.title === payload.title
+            && (task.note || '') === payload.note
+            && ymd(task.due_at) === payload.due_at
+            && task.completed === payload.completed
+            && (task.my_day_date === todayInt() ? 1 : 0) === payload.my_day) {
+            return;
+        }
+        const soft = task
+            && task.completed === payload.completed
+            && (task.my_day_date === todayInt() ? 1 : 0) === payload.my_day
+            && ymd(task.due_at) === payload.due_at;
+        save(payload, soft);
+    });
 
     return false;
 };
 
-window.pageOnUnLoad = function () {
-};
+window.pageOnUnLoad = function () {};

@@ -31,6 +31,10 @@
         opacity: 0.55;
     }
 
+    [hidden]{
+        display:none;
+    }
+
     @media (max-width: 839px) {
         .todo-pane-detail:not([hidden]) {
             position: fixed;

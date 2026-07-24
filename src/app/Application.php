@@ -6,6 +6,7 @@ namespace app;
 
 use nova\framework\App;
 
+use nova\framework\event\EventManager;
 use function nova\framework\route;
 
 use nova\framework\route\Route;
@@ -16,6 +17,8 @@ class Application extends App
 
     public function onFrameworkStart(): void
     {
+        $router = ['todo','main'];
+        EventManager::trigger('admin.router', $router);
         Route::getInstance()
             ->get('/', route('todo', 'main', 'home'))
             ->get('/ics/{token}.ics', route('todo', 'ics', 'feed'));
