@@ -20,6 +20,7 @@ class Application extends App
         $router = ['todo','main'];
         EventManager::trigger('admin.router', $router);
         Route::getInstance()
-            ->get('/', route('todo', 'main', 'home'));
+            ->get('/', route('todo', 'main', 'home'))
+            ->getOrPost('/mcp', route('todo', 'mcp', 'handleMcpRequest'));
     }
 }

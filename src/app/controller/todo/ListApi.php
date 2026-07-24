@@ -7,6 +7,7 @@ namespace app\controller\todo;
 use app\database\dao\TaskDao;
 use app\database\dao\TodoListDao;
 use app\database\model\TodoListModel;
+use app\todo\TodoOps;
 use nova\framework\http\Response;
 use nova\plugin\login\controller\BaseAPIController;
 
@@ -14,9 +15,7 @@ class ListApi extends BaseAPIController
 {
     public function index(): Response
     {
-        $userId = $this->userModel->id;
-        TodoListDao::getInstance()->ensureDefault($userId);
-        $lists = TodoListDao::getInstance()->listByUser($userId);
+        $lists = TodoOps::listLists($this->userModel->id);
 
         return Response::asJson([
             'code' => 200,
@@ -27,21 +26,12 @@ class ListApi extends BaseAPIController
 
     public function create(): Response
     {
-        $title = trim((string)$this->request->post('title', ''));
-        if ($title === '') {
-            return Response::asJson(['code' => 400, 'msg' => '列表名称不能为空', 'data' => []]);
+        try {
+            $list = TodoOps::createList($this->userModel->id, (string)$this->request->post('title', ''));
+        } catch (\RuntimeException $e) {
+            $code = $e->getCode() === 404 ? 404 : 400;
+            return Response::asJson(['code' => $code, 'msg' => $e->getMessage(), 'data' => []]);
         }
-
-        $userId = $this->userModel->id;
-        TodoListDao::getInstance()->ensureDefault($userId);
-
-        $list = new TodoListModel();
-        $list->user_id = $userId;
-        $list->title = $title;
-        $list->sort_order = TodoListDao::getInstance()->nextSortOrder($userId);
-        $list->is_default = 0;
-        $list->created_at = time();
-        $list->id = TodoListDao::getInstance()->insertModel($list);
 
         return Response::asJson([
             'code' => 200,
