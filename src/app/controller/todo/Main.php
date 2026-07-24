@@ -40,8 +40,6 @@ class Main extends BaseViewController
 
         return $this->viewResponse->asTpl('index', [
             'pageTitle' => $this->resolveTitle($view, $listId, $userId),
-            'currentView' => $view,
-            'currentListId' => $listId,
             'defaultListId' => $default->id,
         ]);
     }
@@ -50,7 +48,6 @@ class Main extends BaseViewController
     {
         $userId = $this->userModel->id;
         TodoListDao::getInstance()->ensureDefault($userId);
-        /** @var TodoListModel[] $lists */
         $lists = TodoListDao::getInstance()->listByUser($userId);
 
         $menu = [

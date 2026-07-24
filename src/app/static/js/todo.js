@@ -4,7 +4,7 @@
  * @file todo.js
  */
 
-window.pageLoadFiles = ['Toaster', 'URLUtils'];
+window.pageLoadFiles = ['Toaster', 'URLUtils', 'Layer'];
 
 window.pageOnLoad = function () {
     const $workspace = $('.todo-workspace');
@@ -25,8 +25,6 @@ window.pageOnLoad = function () {
     const $taskList = $('#todo-task-list');
     const $empty = $('#todo-task-empty');
     const $detailPane = $('#todo-detail-pane');
-    const $detailEmpty = $('#todo-detail-empty');
-    const $detailBody = $detailPane.find('.todo-detail-body');
 
     const req = () => $.request;
 
@@ -80,8 +78,6 @@ window.pageOnLoad = function () {
         return `截止 ${dateStr}`;
     };
 
-    const isNarrow = () => window.matchMedia('(max-width: 900px)').matches;
-
     const setField = (id, value) => {
         const el = document.getElementById(id);
         if (el) {
@@ -97,23 +93,11 @@ window.pageOnLoad = function () {
     const showDetailPane = (show) => {
         if (show) {
             $detailPane.removeAttr('hidden');
-            $detailEmpty.attr('hidden', '');
-            $detailBody.removeAttr('hidden');
-            if (isNarrow()) {
-                $detailPane.addClass('todo-detail-open');
-                $workspace.addClass('todo-detail-active');
-            }
+            $workspace.addClass('is-detail-open');
             return;
         }
-        $detailBody.attr('hidden', '');
-        $detailEmpty.removeAttr('hidden');
-        $detailPane.removeClass('todo-detail-open');
-        $workspace.removeClass('todo-detail-active');
-        if (!isNarrow()) {
-            $detailPane.removeAttr('hidden');
-        } else {
-            $detailPane.attr('hidden', '');
-        }
+        $detailPane.attr('hidden', '');
+        $workspace.removeClass('is-detail-open');
     };
 
     const clearDetail = () => {
@@ -166,9 +150,9 @@ window.pageOnLoad = function () {
             $taskList.append(`
                 <div class="todo-task-item${active}${done}" data-id="${task.id}">
                     <mdui-checkbox class="todo-task-check" ${task.completed === 1 ? 'checked' : ''}></mdui-checkbox>
-                    <div class="todo-task-main">
-                        <div class="todo-task-title">${escapeHtml(task.title)}</div>
-                        ${due ? `<div class="todo-task-due">${escapeHtml(due)}</div>` : ''}
+                    <div class="todo-task-main min-w-0">
+                        <div class="todo-task-title body-large break-words">${escapeHtml(task.title)}</div>
+                        ${due ? `<div class="todo-task-due text-primary label-small mt-1">${escapeHtml(due)}</div>` : ''}
                     </div>
                     <mdui-button-icon class="todo-task-star" icon="${starIcon}"></mdui-button-icon>
                 </div>`);
@@ -190,6 +174,74 @@ window.pageOnLoad = function () {
         if (titleEl) {
             titleEl.textContent = `${pageTitle} - ${appName}`;
         }
+        syncListDeleteBtn();
+    };
+
+    const isDeletableList = () => {
+        if (state.view !== 'list' || state.listId <= 0) {
+            return false;
+        }
+        if (state.listId === state.defaultListId) {
+            return false;
+        }
+        const $item = $(`#todo-drawer-list .todo-list-item[data-list-id="${state.listId}"]`);
+        if ($item.length && String($item.attr('data-is-default')) === '1') {
+            return false;
+        }
+        return true;
+    };
+
+    const syncListDeleteBtn = () => {
+        const btn = document.getElementById('todo-list-delete-btn');
+        if (!btn) {
+            return;
+        }
+        if (isDeletableList()) {
+            btn.removeAttribute('hidden');
+        } else {
+            btn.setAttribute('hidden', '');
+        }
+    };
+
+    const confirm = (msg, title, onYes) => {
+        $.layer.confirm({ msg: msg, title: title, yes: onYes, no: function () {} });
+    };
+
+    const goDefaultList = () => {
+        const $default = $(`#todo-drawer-list .todo-list-item[data-list-id="${state.defaultListId}"]`);
+        if ($default.length) {
+            $default[0].click();
+            return;
+        }
+        const url = `/todo/main/index?view=list&list_id=${state.defaultListId}`;
+        $.url.setUri(url);
+        $.emitter.emit('pjax:prevented', new URL(url, window.location.origin).searchParams);
+        // SidebarManager 高亮需要自己点不到时手动清一下 active
+        $('#todo-drawer-list mdui-list-item[active]').removeAttr('active');
+        $(`#todo-drawer-list mdui-list-item[data-link="${url}"]`).attr('active', '');
+    };
+
+    const deleteCurrentList = () => {
+        if (!isDeletableList()) {
+            return;
+        }
+        const listId = state.listId;
+        const title = String($('.todo-pane-title').text() || '').trim() || '该列表';
+        confirm(
+            `确定删除列表「${escapeHtml(title)}」吗？其中的任务也会一并删除。`,
+            '删除列表',
+            function () {
+                req().postForm('/todo/listApi/delete', { id: listId }, (res) => {
+                    if (res.code !== 200) {
+                        toastError(res.msg);
+                        return;
+                    }
+                    $(`#todo-drawer-list .todo-list-item[data-list-id="${listId}"]`).remove();
+                    toastOk('列表已删除');
+                    goDefaultList();
+                });
+            }
+        );
     };
 
     const applyParams = () => {
@@ -204,8 +256,6 @@ window.pageOnLoad = function () {
         }
         state.view = view;
         state.listId = listId;
-        $workspace.attr('data-view', state.view);
-        $workspace.attr('data-list-id', String(state.listId || 0));
         syncTitle();
     };
 
@@ -353,9 +403,6 @@ window.pageOnLoad = function () {
 
     $('#todo-detail-back').on('click', () => {
         clearDetail();
-        if (isNarrow()) {
-            $detailPane.attr('hidden', '');
-        }
     });
 
     $('#todo-detail-star').on('click', () => {
@@ -485,6 +532,7 @@ window.pageOnLoad = function () {
         }
     });
 
+    $('#todo-list-delete-btn').on('click', deleteCurrentList);
     const appendDrawerList = (list) => {
         const $list = $('#todo-drawer-list');
         const $divider = $list.find('mdui-divider').first();
@@ -560,12 +608,7 @@ window.pageOnLoad = function () {
         });
     });
 
-    if (isNarrow()) {
-        $detailPane.attr('hidden', '');
-    } else {
-        $detailPane.removeAttr('hidden');
-        showDetailPane(false);
-    }
+    showDetailPane(false);
 
     // 对齐 book.js
     $.emitter.on('pjax:prevented', reload);
