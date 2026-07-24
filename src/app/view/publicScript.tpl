@@ -27,31 +27,4 @@ framework/layout.js,
     </form>
 </mdui-dialog-form>
 
-<script>
-    document.querySelector("#hiddenBody").remove();
-
-    const listDialog = document.getElementById('todo-list-dialog');
-
-    listDialog.submit('/todo/listApi/create', (_data, res) => {
-        location.href = "/todo/main/index?view=list&list_id=" + res.data.id;
-    });
-
-    $('#todo-new-list-btn').on('click', () => {
-        listDialog.open(true);
-    });
-
-    $('#todo-copy-mcp-btn').on('click', () => {
-        $.request.get('/todo/mcpApi/getConfig', {}, (res) => {
-            if (res.code !== 200) {
-                $.toaster.error(res.msg || '获取 MCP 配置失败');
-                return;
-            }
-            const text = JSON.stringify({ mcpServers: res.data.mcpServers }, null, 2);
-            if ($.copy(text)) {
-                $.toaster.success('MCP 配置已复制到剪贴板');
-            } else {
-                $.toaster.error('复制失败');
-            }
-        });
-    });
-</script>
+<script src="/static/js/layout.js"></script>
