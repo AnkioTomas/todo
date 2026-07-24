@@ -62,6 +62,7 @@
         </div>
     </mdui-layout-main>
 </mdui-layout>
+
 <script id="script"></script>
 {include file="publicScript.tpl"}
 </body>

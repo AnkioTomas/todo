@@ -112,11 +112,10 @@
     }
 </style>
 <div id="container" class="mt-0 px-0">
-    <div class="todo-workspace bg-surface"
-         data-default-list-id="{$defaultListId}">
+    <div class="todo-workspace bg-surface">
         <div class="todo-pane-tasks p-3">
             <div class="todo-pane-header mb-3">
-                <h1 class="todo-pane-title headline-medium font-semibold m-0 min-w-0">{$pageTitle}</h1>
+                <h1 class="todo-pane-title headline-medium font-semibold m-0 min-w-0"></h1>
                 <mdui-button-icon id="todo-list-delete-btn" icon="delete" title="删除列表" hidden></mdui-button-icon>
             </div>
             <div class="todo-add-row mb-3">
@@ -145,19 +144,5 @@
             </div>
         </div>
     </div>
-
-    <mdui-dialog id="todo-list-dialog" headline="新建列表">
-        <mdui-text-field id="todo-list-title-input" label="列表名称" clearable></mdui-text-field>
-        <mdui-button slot="action" variant="text" id="todo-list-dialog-cancel">取消</mdui-button>
-        <mdui-button slot="action" variant="tonal" id="todo-list-dialog-ok">创建</mdui-button>
-    </mdui-dialog>
-
-    <mdui-dialog id="todo-ics-dialog" headline="日历订阅">
-        <p class="mb-3 opacity-75 body-medium">将此链接添加到 Apple / Google 日历即可订阅未完成且有截止日期的任务。</p>
-        <mdui-text-field id="todo-ics-url" label="订阅地址" readonly></mdui-text-field>
-        <mdui-button slot="action" variant="text" id="todo-ics-reset">重置链接</mdui-button>
-        <mdui-button slot="action" variant="tonal" id="todo-ics-copy">复制</mdui-button>
-        <mdui-button slot="action" variant="text" id="todo-ics-close">关闭</mdui-button>
-    </mdui-dialog>
 </div>
 <script id="script" src="/static/js/todo.js?v={$__v}"></script>
