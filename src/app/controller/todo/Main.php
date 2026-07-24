@@ -25,23 +25,8 @@ class Main extends BaseViewController
 
     public function index(): Response
     {
-        $userId = $this->userModel->id;
-        $default = TodoListDao::getInstance()->ensureDefault($userId);
 
-        $view = (string)$this->request->get('view', 'list');
-        if (!in_array($view, ['today', 'important', 'planned', 'list'], true)) {
-            $view = 'list';
-        }
-
-        $listId = (int)$this->request->get('list_id', 0);
-        if ($view === 'list' && $listId <= 0) {
-            $listId = $default->id;
-        }
-
-        return $this->viewResponse->asTpl('index', [
-            'pageTitle' => $this->resolveTitle($view, $listId, $userId),
-            'defaultListId' => $default->id,
-        ]);
+        return $this->viewResponse->asTpl('index', []);
     }
 
     protected function getMenu(): array

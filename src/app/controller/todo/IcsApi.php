@@ -38,8 +38,6 @@ class IcsApi extends BaseAPIController
 
     private function buildUrl(string $token): string
     {
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        return $scheme . '://' . $host . '/ics/' . $token . '.ics';
+        return $this->request->getBasicAddress(). '/ics/' . $token . '.ics';
     }
 }
