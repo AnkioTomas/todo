@@ -30,9 +30,4 @@ class TaskModel extends Model
     {
         return 1;
     }
-
-    public function getNoEscape(): array
-    {
-        return ['note'];
-    }
 }

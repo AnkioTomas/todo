@@ -64,7 +64,11 @@
     </mdui-layout-main>
 </mdui-layout>
 
+{if isset($__template_file) && $__template_file}
+<template id="page">{include file=$__template_file}</template>
+{/if}
 <script id="script"></script>
+{* 首屏 seed 同步消费：PjaxUtils 初始化必须在 #script 之后 *}
 {include file="publicScript.tpl"}
 </body>
 </html>
